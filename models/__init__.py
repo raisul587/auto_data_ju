@@ -1,0 +1,1 @@
+"""Placeholder for model definitions if needed in future."""
