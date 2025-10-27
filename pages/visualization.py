@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import streamlit as st
 import pandas as pd
-
 from utils import plotting as pl
 
 
@@ -43,6 +42,7 @@ def show_visualization_page() -> None:
 
     fig = None
 
+    # === CHART TYPES (same as before) ===
     if chart_type == 'Histogram':
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         cat_cols = df.select_dtypes(exclude=['number']).columns.tolist()
@@ -81,9 +81,7 @@ def show_visualization_page() -> None:
             pie_col = st.selectbox("Select categorical column", options=cat_cols)
             fig = pl.pie(df, pie_col)
 
-    # Additional chart types
     elif chart_type == 'Bar Chart':
-        # For bar charts we need a categorical x and numeric y
         cat_cols = df.select_dtypes(exclude=['number']).columns.tolist()
         num_cols = df.select_dtypes(include=['number']).columns.tolist()
         if not cat_cols or not num_cols:
@@ -134,9 +132,7 @@ def show_visualization_page() -> None:
             y_col = st.selectbox("Y axis", options=[c for c in num_cols if c != x_col], key="heatmap_y")
             fig = pl.density_heatmap(df, x_col, y_col)
 
-    # Spider chart (radar chart)
     elif chart_type == 'Spider Chart':
-        # Require at least three numeric columns for a meaningful spider chart
         num_cols = df.select_dtypes(include=['number']).columns.tolist()
         cat_cols = df.select_dtypes(exclude=['number']).columns.tolist()
         if len(num_cols) < 2:
@@ -148,53 +144,42 @@ def show_visualization_page() -> None:
                 default=num_cols[:min(5, len(num_cols))],
                 key="spider_values"
             )
-            cat_col = st.selectbox(
-                "Group by (optional)",
-                options=[None] + cat_cols,
-                key="spider_cat"
-            )
-            agg_method = st.selectbox(
-                "Aggregation method",
-                options=['mean', 'sum'],
-                key="spider_agg"
-            )
+            cat_col = st.selectbox("Group by (optional)", options=[None] + cat_cols, key="spider_cat")
+            agg_method = st.selectbox("Aggregation method", options=['mean', 'sum'], key="spider_agg")
             if selected_vals:
                 fig = pl.spider_chart(df, value_cols=selected_vals, category_col=cat_col, aggregation=agg_method)
 
-    # Display colour picker, chart and save option
+    # === LABEL CUSTOMIZATION ADDED HERE ===
     if fig is not None:
-        # Colour picker allows customising the palette.  We use a unique key per chart type so that
-        # switching chart types preserves independent colour selections.  The default colour is
-        # drawn from Plotly's first category colour.
+        # Custom axis labels input
+        st.subheader("📝 Custom Axis Labels")
+        x_label = st.text_input("X-axis label", value=fig.layout.xaxis.title.text or "", key=f"x_label_{chart_type}")
+        y_label = st.text_input("Y-axis label", value=fig.layout.yaxis.title.text or "", key=f"y_label_{chart_type}")
+
+        # Apply the labels
+        fig.update_layout(
+            xaxis_title=x_label,
+            yaxis_title=y_label,
+        )
+
+        # === Colour customization (unchanged) ===
         default_colour = "#1f77b4"
         selected_colour = st.color_picker(
             "🎨 Pick a colour for the chart",
             value=default_colour,
             key=f"colour_picker_{chart_type}"
         )
-        # Update the figure's colour palette
-        # Apply the selected colour to the chart.  Colourway does not update
-        # existing traces, so we delegate to a helper in the plotting module
-        # that updates marker, line and fill colours as appropriate.
         pl.apply_single_colour(fig, selected_colour)
 
+        # Show final chart
         st.plotly_chart(fig, use_container_width=True)
 
-        # Allow the user to save the chart to the dashboard
-        # Provide a name for the chart; default to the chart type
-        chart_name = st.text_input(
-            "Chart name",
-            value=f"{chart_type}",
-            key=f"chart_name_{chart_type}"
-        )
+        # === Save chart to dashboard (unchanged) ===
+        chart_name = st.text_input("Chart name", value=f"{chart_type}", key=f"chart_name_{chart_type}")
         if st.button("💾 Save to Dashboard", key=f"save_dash_{chart_type}"):
-            # Initialise the dashboard charts list in session state
             if 'dashboard_charts' not in st.session_state:
                 st.session_state.dashboard_charts = []
-            import copy  # local import to avoid overhead at module import time
-            # Append a deep copy of the current figure and the chosen name.  Copying
-            # avoids modifications to the original figure (e.g. colour changes) from
-            # propagating across views.
+            import copy
             fig_copy = copy.deepcopy(fig)
             st.session_state.dashboard_charts.append({'name': chart_name, 'figure': fig_copy})
             st.success(f"Chart '{chart_name}' saved to dashboard.")

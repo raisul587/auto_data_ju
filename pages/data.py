@@ -154,9 +154,7 @@ def show_data_page() -> None:
                 st.success("Outlier rows removed using IQR method.")
                 st.rerun()
 
-    # Download cleaned dataset
-    csv = st.session_state.clean_df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download cleaned CSV", csv, file_name="cleaned_dataset.csv", mime="text/csv")
+
 
     # Drop columns section
     with st.expander("🗑️ Drop Columns"):
@@ -175,3 +173,7 @@ def show_data_page() -> None:
                     du.delete_cached_dataset()
                 st.success(f"Removed columns: {', '.join(drop_cols)}")
                 st.rerun()
+                
+    # Download cleaned dataset
+    csv = st.session_state.clean_df.to_csv(index=False).encode('utf-8')
+    st.download_button("Download cleaned CSV", csv, file_name="cleaned_dataset.csv", mime="text/csv")
