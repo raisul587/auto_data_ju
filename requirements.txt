@@ -11,3 +11,4 @@ SQLAlchemy>=2.0
 prophet>=1.1
 streamlit-option-menu>=0.3.5
 requests>=2.31
+openpyxl
