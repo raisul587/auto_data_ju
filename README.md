@@ -460,12 +460,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Plotly team for interactive visualizations
 - PyCaret team for AutoML capabilities
 
-## 📞 Support
 
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Email: your.email@example.com
-- Documentation: [Full Documentation](docs/)
 
 ## 🔮 Future Enhancements
 
@@ -485,6 +480,7 @@ For issues, questions, or suggestions:
 **⭐ If you find this project useful, please consider giving it a star!**
 
 Made with ❤️ using Python and Streamlit
+
 
 
 
