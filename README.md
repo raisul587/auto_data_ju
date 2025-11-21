@@ -314,8 +314,6 @@ sqlite:///path/to/database.db
 
 
 ### DFD
-
-```markdown
 ```mermaid
 flowchart TB
     %% Client Layer
@@ -487,4 +485,5 @@ For issues, questions, or suggestions:
 **⭐ If you find this project useful, please consider giving it a star!**
 
 Made with ❤️ using Python and Streamlit
+
 
