@@ -408,7 +408,7 @@ flowchart TB
     classDef data fill:#FFE0B2,stroke:#FF8C00
     classDef external fill:#F0F0F0,stroke:#A0A0A0
     classDef deploy fill:#F3E5F5,stroke:#8E24AA
-    ```
+```
 
 ## 🤝 Contributing
 
@@ -485,6 +485,7 @@ For issues, questions, or suggestions:
 **⭐ If you find this project useful, please consider giving it a star!**
 
 Made with ❤️ using Python and Streamlit
+
 
 
 
