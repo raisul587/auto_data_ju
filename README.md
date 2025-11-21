@@ -312,6 +312,106 @@ sqlite:///path/to/database.db
 4. Explore filtered data on Exploration page
 5. Train model on filtered subset
 
+
+### DFD
+
+```markdown
+```mermaid
+flowchart TB
+    %% Client Layer
+    Browser["Browser UI"]:::ui
+
+    %% Presentation Layer
+    Streamlit["Streamlit Server"]:::server
+
+    Browser -->|"HTTP"| Streamlit
+
+    %% Page Modules
+    subgraph "Streamlit Server"
+        Home["Home Page"]:::page
+        DataPage["Data Page"]:::page
+        Exploration["Exploration Page"]:::page
+        Visualization["Visualization Page"]:::page
+        Modeling["Modeling Page"]:::page
+        Dashboard["Dashboard Page"]:::page
+    end
+
+    Streamlit --> Home
+    Streamlit --> DataPage
+    Streamlit --> Exploration
+    Streamlit --> Visualization
+    Streamlit --> Modeling
+    Streamlit --> Dashboard
+
+    %% Business Logic Layer
+    subgraph "Business Logic Utils"
+        DataUtils["data_utils"]:::logic
+        FilterUtils["filter_utils"]:::logic
+        FeatureEng["feature_engineering"]:::logic
+        MLUtils["ml_utils"]:::logic
+        Plotting["plotting"]:::logic
+    end
+
+    Home -->|"calls"| DataUtils
+    Home -->|"calls"| FilterUtils
+
+    DataPage -->|"calls"| DataUtils
+    DataPage -->|"calls"| FeatureEng
+    DataPage -->|"calls"| FilterUtils
+
+    Exploration -->|"calls"| DataUtils
+    Exploration -->|"calls"| Plotting
+    Exploration -->|"calls"| FilterUtils
+
+    Visualization -->|"calls"| Plotting
+    Visualization -->|"calls"| DataUtils
+
+    Modeling -->|"calls"| FeatureEng
+    Modeling -->|"calls"| MLUtils
+    Modeling -->|"calls"| DataUtils
+
+    Dashboard -->|"calls"| MLUtils
+    Dashboard -->|"calls"| Plotting
+    Dashboard -->|"calls"| DataUtils
+
+    %% Data Layer
+    subgraph "Data Layer"
+        InMemory["In-memory DataFrame"]:::data
+        Cache["persistent cache\n(cached_dataset.pkl)"]:::data
+        ModelsDir["models/"]:::data
+        ExtDB["External DB\n(SQLAlchemy)"]:::external
+    end
+
+    DataUtils --> InMemory
+    DataUtils --> Cache
+    DataUtils --> ModelsDir
+    DataUtils --> ExtDB
+
+    FilterUtils --> InMemory
+    FeatureEng --> InMemory
+    MLUtils --> InMemory
+    MLUtils --> Cache
+    Plotting --> InMemory
+
+    %% Deployment & Config
+    subgraph "Deployment & Config"
+        Config[".streamlit/config.toml"]:::deploy
+        Requirements["requirements.txt"]:::deploy
+    end
+
+    Streamlit --> Config
+    Streamlit --> Requirements
+
+    %% Styles
+    classDef ui fill:#D0E8FF,stroke:#0366D6
+    classDef server fill:#BEE5D8,stroke:#228B22
+    classDef page fill:#E0F7FA,stroke:#00838F
+    classDef logic fill:#E6F4EA,stroke:#2E8B57
+    classDef data fill:#FFE0B2,stroke:#FF8C00
+    classDef external fill:#F0F0F0,stroke:#A0A0A0
+    classDef deploy fill:#F3E5F5,stroke:#8E24AA
+
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -354,7 +454,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Your Name** - Initial work
 
 ## 🙏 Acknowledgments
 
@@ -388,3 +487,4 @@ For issues, questions, or suggestions:
 **⭐ If you find this project useful, please consider giving it a star!**
 
 Made with ❤️ using Python and Streamlit
+
