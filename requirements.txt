@@ -5,7 +5,7 @@ matplotlib
 seaborn
 plotly
 scikit-learn
-pycaret
+pycaret>=3.0
 xgboost
 SQLAlchemy
 prophet
