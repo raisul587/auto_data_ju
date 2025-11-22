@@ -1,4 +1,11 @@
 
+"""
+modeling.py
+===========
+
+Machine learning page logic: handles feature engineering, training, prediction
+and optional time-series forecasting.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +18,6 @@ from utils import ml_utils as mu
 
 
 def show_modeling_page() -> None:
-   
     st.header("🤖 Machine Learning & Advanced Analytics")
     if 'clean_df' not in st.session_state or st.session_state.clean_df.empty:
         st.info("Please load and prepare a dataset on the Data page first.")
@@ -110,29 +116,6 @@ def show_modeling_page() -> None:
                     st.subheader("Forecast Results")
                     st.line_chart(forecast.set_index('ds')[['yhat', 'yhat_lower', 'yhat_upper']])
 
-    # ML training
-    with st.expander("🧠 Train/Test Models"):
-        # Choose target
-        target_col = st.selectbox("Select target variable", options=st.session_state.model_df.columns.tolist())
-        features = [c for c in st.session_state.model_df.columns if c != target_col]
-        alg = st.selectbox("Choose algorithm", options=['Linear Regression', 'Logistic Regression', 'Random Forest', 'XGBoost'])
-        test_size = st.slider("Test set size", min_value=0.1, max_value=0.5, value=0.2, step=0.05)
-        if st.button("Train Model"):
-            try:
-                model, metrics = mu.train_model(st.session_state.model_df[[*features, target_col]], target_col, alg, test_size=test_size)
-                st.session_state.last_model = model
-                st.session_state.last_metrics = metrics
-                st.session_state.last_target = target_col
-                st.success("Model trained successfully.")
-            except Exception as e:
-                st.error(f"Training failed: {e}")
-                # Provide a simple tip when dtype errors occur
-                st.info("Tip: Ensure that all feature columns are numeric or encoded. Convert datetime columns to numeric values before training.")
-
-        # Display metrics
-        if 'last_metrics' in st.session_state:
-            st.subheader("Metrics")
-            metrics = st.session_state.last_metrics
             st.json(metrics)
             # Feature importance
             with st.expander("Feature Importance"):
@@ -145,26 +128,6 @@ def show_modeling_page() -> None:
                     st.dataframe(imp_df.head(20))
                 else:
                     st.info("The selected model does not expose feature importance.")
-
-    # AutoML
-    with st.expander("⚡ AutoML (PyCaret)"):
-        if st.button("Run AutoML"):
-            try:
-                best_model, leaderboard = mu.auto_ml(st.session_state.model_df, target_col)
-                st.success("AutoML completed.")
-                if best_model is None:
-                    st.info("AutoML finished but did not return a best model.")
-                else:
-                    st.subheader("Best Model")
-                    st.write(best_model)
-
-                st.subheader("Leaderboard")
-                if leaderboard is None:
-                    st.info("Leaderboard not available. Check logs or PyCaret output for details.")
-                else:
-                    st.dataframe(leaderboard)
-            except Exception as e:
-                st.error(f"AutoML failed: {e}")
 
     # Prediction section
     if 'last_model' in st.session_state:

@@ -61,7 +61,6 @@ A comprehensive, enterprise-grade data analysis and machine learning platform bu
 - **Logistic Regression** - For binary/multiclass classification
 - **Random Forest** - Classifier & Regressor variants
 - **XGBoost** - Advanced gradient boosting
-- **AutoML** - Automated model selection via PyCaret
 
 #### Feature Engineering
 - **Scaling** - StandardScaler, MinMaxScaler
@@ -180,7 +179,6 @@ Go to the **ML** page to:
 - Choose algorithm
 - Configure train/test split
 - View metrics and feature importance
-- Run AutoML for automatic model selection
 - Make predictions on new data
 
 ### 7. View Dashboard
@@ -247,7 +245,6 @@ automated-data-ju/
 ### Machine Learning
 - **scikit-learn** - ML algorithms and preprocessing
 - **XGBoost** - Gradient boosting
-- **PyCaret** - AutoML framework
 - **Prophet** - Time series forecasting
 
 ### Database & Storage
@@ -430,7 +427,6 @@ Contributions are welcome! Please follow these steps:
 
 - **Large Datasets** - Performance may degrade with datasets >1GB due to in-memory processing
 - **Browser Compatibility** - Best experience on Chrome/Firefox; Safari may have minor issues
-- **AutoML Performance** - PyCaret AutoML can be slow on large datasets
 - **Prophet Installation** - May require additional dependencies on Windows
 
 ## 📝 Changelog
@@ -458,7 +454,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Streamlit team for the amazing framework
 - scikit-learn contributors for ML tools
 - Plotly team for interactive visualizations
-- PyCaret team for AutoML capabilities
 
 
 

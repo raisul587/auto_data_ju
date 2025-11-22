@@ -4,8 +4,8 @@ ml_utils.py
 
 Machine learning helper functions for training and evaluating models.
 
-This module centralises model selection, splitting of data, evaluation of
-metrics and optional AutoML functionality via PyCaret.  By keeping
+This module centralises model selection, splitting of data, and evaluation of
+metrics for the built-in algorithms.  By keeping
 model training code here, we avoid duplication across pages and make
 the rest of the app easier to maintain.
 """
@@ -27,53 +27,6 @@ from sklearn.impute import SimpleImputer
 XGBClassifier = None  # type: ignore
 XGBRegressor = None  # type: ignore
 
-"""
-Lazy imports for optional heavy dependencies
--------------------------------------------
-
-The original implementation imported heavy libraries such as PyCaret and
-XGBoost at the module level.  Importing these packages unconditionally
-causes a noticeable delay when the app first starts up, even if the
-corresponding functionality is never used.  To make the application
-more responsive on initial load, the imports have been refactored
-so that they occur only when needed.  The helper functions below
-attempt to import the required modules at call time and will raise
-ImportError if the packages are unavailable.
-"""
-
-# Placeholders for optional imports.  They remain ``None`` until the
-# first time the corresponding functionality is invoked.  See
-# ``_get_pycaret_functions`` and ``_get_xgboost_models`` for details.
-cls_setup = None  # type: ignore
-compare_cls = None  # type: ignore
-reg_setup = None  # type: ignore
-compare_reg = None  # type: ignore
-
-def _get_pycaret_functions() -> Tuple[Any, Any, Any, Any]:
-    """Dynamically import PyCaret setup and compare_models functions.
-
-    Returns
-    -------
-    tuple
-        A 4‑tuple containing the classification setup, classification
-        compare_models, regression setup and regression compare_models
-        callables from PyCaret.  If PyCaret cannot be imported, an
-        ImportError is raised.
-    """
-    global cls_setup, compare_cls, reg_setup, compare_reg
-    if cls_setup is None or compare_cls is None or reg_setup is None or compare_reg is None:
-        try:
-            from pycaret.classification import setup as _cls_setup, compare_models as _compare_cls  # type: ignore
-            from pycaret.regression import setup as _reg_setup, compare_models as _compare_reg  # type: ignore
-        except ImportError as e:
-            raise ImportError(
-                "PyCaret is not installed. Please install pycaret>=3.0 to use AutoML."
-            ) from e
-        cls_setup = _cls_setup  # type: ignore
-        compare_cls = _compare_cls  # type: ignore
-        reg_setup = _reg_setup  # type: ignore
-        compare_reg = _compare_reg  # type: ignore
-    return cls_setup, compare_cls, reg_setup, compare_reg
 
 def _get_xgboost_models() -> Tuple[Any, Any]:
     """Dynamically import XGBoost models.
@@ -257,68 +210,3 @@ def get_feature_importance(model: Any, feature_names: List[str]) -> Optional[pd.
     importance_df = pd.DataFrame(pairs, columns=['feature', 'importance'])
     importance_df = importance_df.sort_values(by='importance', ascending=False).reset_index(drop=True)
     return importance_df
-
-
-def auto_ml(df: pd.DataFrame, target: str, problem_type: Optional[str] = None) -> Tuple[Any, Any]:
-    """Run an automated machine learning experiment via PyCaret.
-
-    PyCaret is an optional dependency that provides AutoML functionality.
-    To minimise the startup time of the application, the PyCaret
-    components are imported only when this function is called.  If
-    PyCaret is unavailable, an informative ImportError is raised.  The
-    function detects whether the task is classification or regression
-    based on the target column if ``problem_type`` is not specified.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataset including the target column.
-    target : str
-        Name of the target column.
-    problem_type : str, optional
-        Force either 'classification' or 'regression'.  If None, the
-        problem type will be inferred.
-
-    Returns
-    -------
-    (best_model, leaderboard)
-        A tuple containing the best model returned by PyCaret and
-        whatever object PyCaret's ``compare_models`` returns.  Depending
-        on the PyCaret version this may be a DataFrame leaderboard or
-        another experiment object.
-    """
-    # Load PyCaret functions on demand
-    try:
-        cls_setup_fn, compare_cls_fn, reg_setup_fn, compare_reg_fn = _get_pycaret_functions()
-    except ImportError:
-        # Re‑raise with a clearer message for the caller
-        raise ImportError("PyCaret is not installed. Please install pycaret>=3.0 to use AutoML.")
-
-    # Infer problem type if not explicitly provided
-    if problem_type is None:
-        problem_type = _detect_problem_type(df[target])
-
-    data = df.copy()
-    # Run the appropriate PyCaret workflow and capture the experiment object
-    if problem_type == 'classification':
-        # Remove deprecated 'silent' parameter; Preprocess=True remains for consistency
-        exp = cls_setup_fn(data=data, target=target, session_id=42, preprocess=True)
-        best_candidates = compare_cls_fn(n_select=1)
-    else:
-        exp = reg_setup_fn(data=data, target=target, session_id=42, preprocess=True)
-        best_candidates = compare_reg_fn(n_select=1)
-
-    # `compare_models` may return a single estimator or a list/tuple of estimators
-    if isinstance(best_candidates, (list, tuple)):
-        best_model = best_candidates[0] if len(best_candidates) > 0 else None
-    else:
-        best_model = best_candidates
-
-    # Attempt to extract the leaderboard DataFrame produced by PyCaret's experiment
-    leaderboard: Optional[pd.DataFrame]
-    try:
-        leaderboard = exp.pull()
-    except Exception:
-        leaderboard = None
-
-    return best_model, leaderboard
