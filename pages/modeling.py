@@ -13,7 +13,6 @@ from utils import ml_utils as mu
 
 
 def show_modeling_page() -> None:
-    """Render the machine learning page."""
     st.header("🤖 Machine Learning & Advanced Analytics")
     if 'clean_df' not in st.session_state or st.session_state.clean_df.empty:
         st.info("Please load and prepare a dataset on the Data page first.")
