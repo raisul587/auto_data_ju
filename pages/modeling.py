@@ -2,13 +2,6 @@
 modeling.py
 ===========
 
-This module contains the machine learning page.  It allows users to
-configure feature engineering steps, select a target variable, choose
-an algorithm and view the resulting metrics and feature importances.
-Time series forecasting and AutoML are also available for advanced
-analysis.
-"""
-
 from __future__ import annotations
 
 import streamlit as st
