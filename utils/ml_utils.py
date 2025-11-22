@@ -20,6 +20,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.impute import SimpleImputer
 
 # Import of XGBoost models has been deferred.  The variables below
 # remain ``None`` until explicitly loaded via ``_get_xgboost_models``.
@@ -153,7 +154,20 @@ def train_model(df: pd.DataFrame, target: str, algorithm: str, test_size: float 
     # Handle categorical features by one‑hot encoding if not already numeric
     X_encoded = pd.get_dummies(X, drop_first=True)
 
-    X_train, X_test, y_train, y_test = train_test_split(X_encoded, y, test_size=test_size, random_state=random_state)
+    # Handle missing values in features using mean imputation for numeric columns
+    imputer = SimpleImputer(strategy='mean')
+    X_encoded_imputed = pd.DataFrame(
+        imputer.fit_transform(X_encoded),
+        columns=X_encoded.columns,
+        index=X_encoded.index
+    )
+
+    # Handle missing values in target variable by dropping rows with NaN in target
+    valid_idx = y.notna()
+    X_encoded_imputed = X_encoded_imputed[valid_idx]
+    y = y[valid_idx]
+
+    X_train, X_test, y_train, y_test = train_test_split(X_encoded_imputed, y, test_size=test_size, random_state=random_state)
 
     if algorithm == 'Linear Regression':
         model = LinearRegression()
