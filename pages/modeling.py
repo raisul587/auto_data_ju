@@ -161,10 +161,17 @@ def show_modeling_page() -> None:
             try:
                 best_model, leaderboard = mu.auto_ml(st.session_state.model_df, target_col)
                 st.success("AutoML completed.")
-                st.subheader("Best Model")
-                st.write(best_model)
+                if best_model is None:
+                    st.info("AutoML finished but did not return a best model.")
+                else:
+                    st.subheader("Best Model")
+                    st.write(best_model)
+
                 st.subheader("Leaderboard")
-                st.dataframe(leaderboard)
+                if leaderboard is None:
+                    st.info("Leaderboard not available. Check logs or PyCaret output for details.")
+                else:
+                    st.dataframe(leaderboard)
             except Exception as e:
                 st.error(f"AutoML failed: {e}")
 

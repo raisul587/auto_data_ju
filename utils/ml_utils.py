@@ -299,11 +299,26 @@ def auto_ml(df: pd.DataFrame, target: str, problem_type: Optional[str] = None) -
         problem_type = _detect_problem_type(df[target])
 
     data = df.copy()
+    # Run the appropriate PyCaret workflow and capture the experiment object
     if problem_type == 'classification':
         # Remove deprecated 'silent' parameter; Preprocess=True remains for consistency
-        s = cls_setup_fn(data=data, target=target, session_id=42, preprocess=True)
-        best = compare_cls_fn(n_select=1)
+        exp = cls_setup_fn(data=data, target=target, session_id=42, preprocess=True)
+        best_candidates = compare_cls_fn(n_select=1)
     else:
-        s = reg_setup_fn(data=data, target=target, session_id=42, preprocess=True)
-        best = compare_reg_fn(n_select=1)
-    return best, s
+        exp = reg_setup_fn(data=data, target=target, session_id=42, preprocess=True)
+        best_candidates = compare_reg_fn(n_select=1)
+
+    # `compare_models` may return a single estimator or a list/tuple of estimators
+    if isinstance(best_candidates, (list, tuple)):
+        best_model = best_candidates[0] if len(best_candidates) > 0 else None
+    else:
+        best_model = best_candidates
+
+    # Attempt to extract the leaderboard DataFrame produced by PyCaret's experiment
+    leaderboard: Optional[pd.DataFrame]
+    try:
+        leaderboard = exp.pull()
+    except Exception:
+        leaderboard = None
+
+    return best_model, leaderboard
