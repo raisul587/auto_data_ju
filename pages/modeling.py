@@ -36,6 +36,10 @@ def show_modeling_page() -> None:
     # Initialize model_df in session state
     if 'model_df' not in st.session_state or st.session_state.model_df.empty:
         st.session_state.model_df = df.copy()
+        st.session_state.encoding_groups = {}
+        st.session_state.label_encoders = {}
+    st.session_state.setdefault('encoding_groups', {})
+    st.session_state.setdefault('label_encoders', {})
 
     # Feature engineering settings
     with st.expander("⚙️ Feature Engineering"):
@@ -59,8 +63,31 @@ def show_modeling_page() -> None:
         encode_cols = st.multiselect("Select categorical columns to encode", options=cat_cols)
         encode_method = st.selectbox("Encoding method", options=['onehot', 'label'])
         if st.button("Apply Encoding"):
-            st.session_state.model_df, encoders = fe.encode_categorical(st.session_state.model_df, encode_cols, method=encode_method)
-            st.success("Encoding applied.")
+            if not encode_cols:
+                st.warning("Please select at least one column to encode.")
+            else:
+                before_df = st.session_state.model_df.copy()
+                st.session_state.model_df, encoders = fe.encode_categorical(st.session_state.model_df, encode_cols, method=encode_method)
+                if encode_method == 'onehot':
+                    new_columns = [c for c in st.session_state.model_df.columns if c not in before_df.columns]
+                    for col in encode_cols:
+                        if col not in before_df.columns:
+                            continue
+                        prefix = f"{col}_"
+                        dummy_cols = [c for c in new_columns if c.startswith(prefix)]
+                        if not dummy_cols:
+                            continue
+                        categories = before_df[col].dropna().unique().tolist()
+                        st.session_state.encoding_groups[col] = {
+                            'dummy_cols': dummy_cols,
+                            'categories': categories,
+                        }
+                        st.session_state.label_encoders.pop(col, None)
+                else:
+                    for col, encoder in encoders.items():
+                        st.session_state.label_encoders[col] = encoder
+                        st.session_state.encoding_groups.pop(col, None)
+                st.success("Encoding applied.")
 
     # Time series detection and forecasting
     with st.expander("📆 Time Series Forecasting"):
@@ -134,38 +161,99 @@ def show_modeling_page() -> None:
         st.subheader("🔮 Predict on New Data")
         model = st.session_state.last_model
         target = st.session_state.get('last_target')
-        # Determine feature columns used for training
         train_df = st.session_state.model_df
         feature_cols = [col for col in train_df.columns if col != target]
-        # Build input interface
-        user_inputs: Dict[str, Any] = {}
+
+        encoding_groups = st.session_state.get('encoding_groups', {})
+        label_encoders = st.session_state.get('label_encoders', {})
+        dummy_columns = {dummy for info in encoding_groups.values() for dummy in info.get('dummy_cols', [])}
+
+        default_values: Dict[str, Any] = {}
         for col in feature_cols:
             series = train_df[col]
             if pd.api.types.is_bool_dtype(series):
-                default_val = bool(series.mode().iloc[0]) if not series.mode().empty else False
-                user_inputs[col] = st.checkbox(f"{col}", value=default_val, key=f"pred_{col}")
+                default_values[col] = bool(series.mode().iloc[0]) if not series.mode().empty else False
             elif pd.api.types.is_numeric_dtype(series):
-                default_val = float(series.mean()) if len(series) > 0 else 0.0
-                user_inputs[col] = st.number_input(f"{col}", value=default_val, key=f"pred_{col}")
+                default_values[col] = float(series.mean()) if len(series) > 0 else 0.0
             else:
-                options = series.dropna().unique().tolist()
-                if len(options) == 0:
-                    options = ['']
-                user_inputs[col] = st.selectbox(f"{col}", options=options, key=f"pred_{col}")
+                default_values[col] = series.mode().iloc[0] if not series.mode().empty else ""
+
+        feature_entries: List[Dict[str, Any]] = []
+        for original, info in encoding_groups.items():
+            feature_entries.append({'name': original, 'type': 'onehot', 'info': info})
+
+        for col in feature_cols:
+            if col in dummy_columns:
+                continue
+            entry: Dict[str, Any] = {'name': col, 'column': col}
+            if col in label_encoders:
+                entry['type'] = 'label'
+                entry['encoder'] = label_encoders[col]
+            elif pd.api.types.is_bool_dtype(train_df[col]):
+                entry['type'] = 'bool'
+            elif pd.api.types.is_numeric_dtype(train_df[col]):
+                entry['type'] = 'numeric'
+            else:
+                entry['type'] = 'categorical'
+                entry['options'] = train_df[col].dropna().unique().tolist()
+            feature_entries.append(entry)
+
+        st.caption("Provide real-world inputs for the selected features. Categorical fields accept the original labels even if the dataset was encoded.")
+        user_inputs: Dict[str, Any] = {}
+        for entry in feature_entries:
+            label = entry['name']
+            key = f"pred_{label}"
+            if entry['type'] == 'onehot':
+                categories = entry['info'].get('categories') or []
+                if not categories:
+                    categories = [col.split(f"{label}_", 1)[1] for col in entry['info'].get('dummy_cols', []) if col.startswith(f"{label}_") and '_' in col]
+                categories = categories or ['']
+                user_inputs[label] = st.selectbox(label, options=categories, key=key, format_func=str)
+            elif entry['type'] == 'label':
+                options = entry['encoder'].classes_.tolist()
+                default_numeric = default_values.get(entry['column'])
+                default_label = options[0] if options else ''
+                if default_numeric is not None and options:
+                    try:
+                        default_label = entry['encoder'].inverse_transform([int(default_numeric)])[0]
+                    except Exception:
+                        pass
+                idx = options.index(default_label) if options and default_label in options else 0
+                user_inputs[label] = st.selectbox(label, options=options, index=idx, key=key)
+            elif entry['type'] == 'bool':
+                user_inputs[label] = st.checkbox(label, value=bool(default_values.get(entry['column'], False)), key=key)
+            elif entry['type'] == 'numeric':
+                user_inputs[label] = st.number_input(label, value=float(default_values.get(entry['column'], 0.0)), key=key)
+            else:
+                options = entry.get('options') or []
+                options = options or ['']
+                default_choice = default_values.get(entry['column'], options[0])
+                if default_choice not in options:
+                    default_choice = options[0]
+                idx = options.index(default_choice) if default_choice in options else 0
+                user_inputs[label] = st.selectbox(label, options=options, index=idx, key=key, format_func=str)
+
         if st.button("Predict", key="predict_button"):
-            # Create a one‑row DataFrame from user inputs
-            input_df = pd.DataFrame([user_inputs])
-            # Convert datetime columns to numeric
+            row_values: Dict[str, Any] = default_values.copy()
+            for entry in feature_entries:
+                value = user_inputs.get(entry['name'])
+                if entry['type'] == 'onehot':
+                    dummy_cols = entry['info'].get('dummy_cols', [])
+                    for dummy in dummy_cols:
+                        row_values[dummy] = 1.0 if dummy == f"{entry['name']}_{value}" else 0.0
+                elif entry['type'] == 'label':
+                    row_values[entry['column']] = float(entry['encoder'].transform([value])[0])
+                else:
+                    row_values[entry['column']] = value
+
+            input_df = pd.DataFrame([row_values])
             for c in input_df.columns:
-                if pd.api.types.is_datetime64_any_dtype(train_df[c]):
+                if c in train_df.columns and pd.api.types.is_datetime64_any_dtype(train_df[c]):
                     input_df[c] = pd.to_datetime(input_df[c]).astype('int64')
-            # One‑hot encode categorical columns
             encoded_input = pd.get_dummies(input_df, drop_first=True)
-            # Align columns with model input features
             model_features = getattr(model, 'input_features_', None)
             if model_features is not None:
                 encoded_input = encoded_input.reindex(columns=model_features, fill_value=0)
-            # Predict
             try:
                 pred = model.predict(encoded_input)[0]
                 st.success(f"Predicted value: {pred}")
