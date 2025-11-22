@@ -28,16 +28,28 @@ def show_modeling_page() -> None:
     
     # Use filtered data if available, otherwise use clean data
     df = st.session_state.get('filtered_df', st.session_state.clean_df)
-    
+
     # Show filter status
     if 'filtered_df' in st.session_state and len(st.session_state.filtered_df) != len(st.session_state.clean_df):
         st.info(f"🔍 Training on filtered data: {len(df):,} rows (filtered from {len(st.session_state.clean_df):,} total rows)")
 
-    # Initialize model_df in session state
-    if 'model_df' not in st.session_state or st.session_state.model_df.empty:
+    # Reset model_df when underlying dataset structure changes (e.g. columns dropped)
+    dataset_signature = (
+        tuple(df.columns.tolist()),
+        len(df)
+    )
+    stored_signature = st.session_state.get('model_df_signature')
+
+    if (
+        'model_df' not in st.session_state
+        or st.session_state.model_df.empty
+        or stored_signature != dataset_signature
+    ):
         st.session_state.model_df = df.copy()
         st.session_state.encoding_groups = {}
         st.session_state.label_encoders = {}
+        st.session_state.model_df_signature = dataset_signature
+
     st.session_state.setdefault('encoding_groups', {})
     st.session_state.setdefault('label_encoders', {})
 
