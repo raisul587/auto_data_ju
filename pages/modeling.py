@@ -1,13 +1,4 @@
-"""
-modeling.py
-===========
 
-This module contains the machine learning page.  It allows users to
-configure feature engineering steps, select a target variable, choose
-an algorithm and view the resulting metrics and feature importances.
-Time series forecasting and AutoML are also available for advanced
-analysis.
-"""
 
 from __future__ import annotations
 
@@ -20,7 +11,7 @@ from utils import ml_utils as mu
 
 
 def show_modeling_page() -> None:
-    """Render the machine learning page."""
+   
     st.header("🤖 Machine Learning & Advanced Analytics")
     if 'clean_df' not in st.session_state or st.session_state.clean_df.empty:
         st.info("Please load and prepare a dataset on the Data page first.")
@@ -71,7 +62,7 @@ def show_modeling_page() -> None:
             st.session_state.model_df = fe.log_transform(st.session_state.model_df, log_cols)
             st.success("Log transformation applied.")
 
-        # Encoding
+        # Encoding part
         encode_cols = st.multiselect("Select categorical columns to encode", options=cat_cols)
         encode_method = st.selectbox("Encoding method", options=['onehot', 'label'])
         if st.button("Apply Encoding"):
