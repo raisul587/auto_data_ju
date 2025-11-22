@@ -116,18 +116,41 @@ def show_modeling_page() -> None:
                     st.subheader("Forecast Results")
                     st.line_chart(forecast.set_index('ds')[['yhat', 'yhat_lower', 'yhat_upper']])
 
-            st.json(metrics)
-            # Feature importance
+    # ML training
+    with st.expander("🧠 Train/Test Models"):
+        target_col = st.selectbox("Select target variable", options=st.session_state.model_df.columns.tolist())
+        features = [c for c in st.session_state.model_df.columns if c != target_col]
+        alg = st.selectbox("Choose algorithm", options=['Linear Regression', 'Logistic Regression', 'Random Forest', 'XGBoost'])
+        test_size = st.slider("Test set size", min_value=0.1, max_value=0.5, value=0.2, step=0.05)
+
+        if st.button("Train Model"):
+            try:
+                model, metrics = mu.train_model(st.session_state.model_df[[*features, target_col]], target_col, alg, test_size=test_size)
+                st.session_state.last_model = model
+                st.session_state.last_metrics = metrics
+                st.session_state.last_target = target_col
+                st.success("Model trained successfully.")
+            except Exception as e:
+                st.error(f"Training failed: {e}")
+                st.info("Tip: Ensure all features are numeric/encoded and that datetime columns are converted before training.")
+
+        if 'last_metrics' in st.session_state:
+            st.subheader("Metrics")
+            st.json(st.session_state.last_metrics)
             with st.expander("Feature Importance"):
-                # Use the input_features_ attribute from the model if available; otherwise fall back
-                feature_names = getattr(st.session_state.last_model, 'input_features_', None)
-                if feature_names is None:
-                    feature_names = st.session_state.model_df.drop(columns=[target_col]).columns.tolist()
-                imp_df = mu.get_feature_importance(st.session_state.last_model, feature_names)
-                if imp_df is not None:
-                    st.dataframe(imp_df.head(20))
+                last_model = st.session_state.get('last_model')
+                last_target = st.session_state.get('last_target')
+                feature_names = getattr(last_model, 'input_features_', None) if last_model is not None else None
+                if feature_names is None and last_target is not None:
+                    feature_names = st.session_state.model_df.drop(columns=[last_target]).columns.tolist()
+                if last_model is not None and feature_names is not None:
+                    imp_df = mu.get_feature_importance(last_model, feature_names)
+                    if imp_df is not None:
+                        st.dataframe(imp_df.head(20))
+                    else:
+                        st.info("The selected model does not expose feature importance.")
                 else:
-                    st.info("The selected model does not expose feature importance.")
+                    st.info("Train a model to view feature importance.")
 
     # Prediction section
     if 'last_model' in st.session_state:
